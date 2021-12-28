@@ -5,50 +5,55 @@ contract DynamicAddressQueue {
 	
 	struct Node {
 		address value;
-		bytes32 nextNodeId;
+		address nextNodeAddress;
 	}
 	
-	bytes32 private _headId;
-	mapping(bytes32 => Node) private _getNodeFromId;
-	uint256 private _queueLength;
+	address private _headAddress = address(0);
+	mapping(address => Node) private _getNodeFromAddress;
 	
 	function enqueue(address addr) external {
 		// TODO isEmpty() function?
-		if(_queueLength == 0)
+		if(isEmpty())
 			_caseBaseEnqueue(addr);
 		else
 			_genericEnqueue(addr);
 	}
 
+	function isEmpty() public returns(bool) {
+		return _headAddress == address(0);
+	}
+
 	function _caseBaseEnqueue(address addr) private {
-		Node memory firstNode = Node(addr, 0);
-		_headId = _generateNodeId(firstNode);
-		firstNode.nextNodeId = _headId;
-		_getNodeFromId[_headId] = firstNode;
+		Node memory firstNode = Node(addr, addr);
+		_getNodeFromAddress[addr] = firstNode;
+		_headAddress = addr;
 	}
 
 	function _genericEnqueue(address addr) private {
-		bytes32 auxNodeId = _getNodeFromId[_headId].nextNodeId;
-		Node memory newNode = Node(addr, auxNodeId);
-		bytes32 newNodeId = _generateNodeId(newNode);
-		_getNodeFromId[newNodeId] = newNode;
-		_getNodeFromId[_headId].nextNodeId = newNodeId;
-		_headId = _getNodeFromId[_headId].nextNodeId;
-		_queueLength++;
-	}
+		Node memory headNode = _getNodeFromAddress[_headAddress];
+		_getNodeFromAddress[addr] = Node(addr, headNode.nextNodeAddress);
+		_getNodeFromAddress[_headAddress].nextNodeAddress = addr;
+		_headAddress = addr;
 
-	function _generateNodeId(Node memory n) private returns(bytes32) {
-		// NOTE n.value should be unique in my use case
-		return keccak256(abi.encode(n.value));
 	}
-
+	
 	function dequeue() external returns (address toReturn) {
-		bytes32 auxNextNodeId = _getNodeFromId[_headId].nextNodeId;
-		toReturn = _getNodeFromId[auxNextNodeId].value;
-		bytes32 headNextId = _getNodeFromId[_headId].nextNodeId;
-		bytes32	headNextNextId = _getNodeFromId[headNextId].nextNodeId;
-		_getNodeFromId[_headId].nextNodeId = headNextNextId;
-		_queueLength--;
+		Node memory headNode = _getNodeFromAddress[_headAddress];
+		if(headNode.nextNodeAddress == headNode.value) {
+			toReturn = headNode.value;
+			delete _getNodeFromAddress[_headAddress];
+			_headAddress = address(0);
+		} else {
+			toReturn = headNode.nextNodeAddress;
+			Node memory nextNodeToHead = _getNodeFromAddress[headNode.nextNodeAddress];
+			headNode.nextNodeAddress = nextNodeToHead.nextNodeAddress;
+			delete _getNodeFromAddress[toReturn];
+		}
+	}
+	
+	// NOTE Only for testing purpose
+	function printQueue() public returns (string memory) {
+		return "test";
 	}
 
 }
