@@ -14,7 +14,6 @@ contract DynamicAddressQueue {
 	mapping(address => Node) private _getNodeFromAddress;
 	
 	function enqueue(address addr) external {
-		// TODO isEmpty() function?
 		if(isEmpty())
 			_caseBaseEnqueue(addr);
 		else
